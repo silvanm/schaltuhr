@@ -9,15 +9,7 @@ from google.cloud import firestore
 
 logging.basicConfig(level=logging.DEBUG)
 
-
-@dataclass
-class NetatmoAccessData:
-    access_token: Union[str, None] = None
-    device_id: Union[str, None] = None
-    created_at: datetime = datetime.now()
-
-
-def get_netatmo_token() -> NetatmoAccessData:
+def get_netatmo_token() -> dict:
     env = Env()
     env.read_env()
 
@@ -38,15 +30,15 @@ def get_netatmo_token() -> NetatmoAccessData:
         scope = response.json()["scope"]
         logging.debug("Your access token is %s", access_token)
         logging.debug("Your refresh token is %s", refresh_token)
-        return NetatmoAccessData(access_token=access_token, device_id=payload['device_id'], created_at=datetime.now())
+        return {'access_token': access_token, 'device_id': payload['device_id'], 'created_at': datetime.now()}
     except requests.exceptions.HTTPError as error:
         print(error.response.status_code, error.response.text)
 
 
-def get_sound_level(netatmo_access_data: NetatmoAccessData) -> float:
+def get_sound_level(netatmo_access_data: dict) -> float:
     params = {
-        'access_token': netatmo_access_data.access_token,
-        'device_id': netatmo_access_data.device_id
+        'access_token': netatmo_access_data['access_token'],
+        'device_id': netatmo_access_data['device_id']
     }
     try:
         logging.info("Retrieve sound level")
@@ -77,7 +69,7 @@ def is_it_dark() -> bool:
     raise Exception("Could not retrieve brightness")
 
 
-def contains_valid_template(date:datetime)->bool:
+def contains_valid_template(date: datetime) -> bool:
     """ Retrieves a display program from the past days.
     Find a day when someone was at home.
 
@@ -91,7 +83,8 @@ def contains_valid_template(date:datetime)->bool:
     db = firestore.Client()
     mindatetime = date.replace(hour=20, minute=0, second=0)
     maxdatetime = date.replace(hour=23, minute=0, second=0)
-    docs = db.collection(u'schaltuhr_log_minutely').where('timestamp', '>', mindatetime).where('timestamp', '<', maxdatetime).stream()
+    docs = db.collection(u'schaltuhr_log_minutely').where('timestamp', '>', mindatetime).where('timestamp', '<',
+                                                                                               maxdatetime).stream()
     total_entries = 0
     entries_with_presence = 0
 

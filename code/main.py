@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Flask, request, jsonify, g, send_from_directory
+from flask import Flask, request, jsonify, session, send_from_directory
 import requests
 import logging
 from google.cloud import datastore, firestore
@@ -8,30 +8,40 @@ from schaltuhr import is_it_dark, get_sound_level
 import schaltuhr
 from environs import Env
 
+env = Env()
+env.read_env()
+
 app = Flask(__name__, static_folder='static')
+app.config['SECRET_KEY'] = env('SECRET_KEY')
+
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
 
 last_level = None
 
-env = Env()
-env.read_env()
-
 
 def get_netatmo_token():
-    if 'netatmo_token' in g:
-        age = g.netatmo_token.created_at - datetime.now().day
+    client = datastore.Client()
+    key = client.key('schaltuhr', 'netatmo_token')
+    token = client.get(key)
+
+    if token is not None:
+        age = token['created_at'].day - datetime.now().day
         if age < 1:
-            logging.debug(f'Log light level. Threshold: {threshold}')
-            return g.netatmo_token
+            logging.debug(f'Using token from cache')
+            return token
     else:
-        g.netatmo_token = None
+        token = None
 
     try:
         logging.info('Getting Netatmo token')
-        g.netatmo_token = schaltuhr.get_netatmo_token()
+        token = schaltuhr.get_netatmo_token()
+        entity = datastore.Entity(key=key)
+        entity.update(token)
+        client.put(entity)
     except Exception as e:
         logging.warning('Failed retrieving the Netatmo token', exc_info=True)
-    return g.netatmo_token
+
+    return token
 
 
 @app.route("/")
