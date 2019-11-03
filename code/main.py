@@ -73,7 +73,7 @@ def lightlevel():
     entity = datastore.Entity(key=key)
     entity.update({
         'lightlevel': lightlevel,
-        'soundlevel': get_sound_level(get_netatmo_token()),
+        'soundlevel': schaltuhr.get_sound_level_cached(get_netatmo_token()),
         'timestamp': datetime.now(),
         'its_day': its_day,
     })

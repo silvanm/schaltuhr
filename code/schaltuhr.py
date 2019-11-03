@@ -1,6 +1,8 @@
+import google
 from datetime import datetime, date, timedelta
 from typing import Union
 
+import pytz
 import requests, re
 from attr import dataclass
 from environs import Env
@@ -8,6 +10,7 @@ import logging
 from google.cloud import firestore
 
 logging.basicConfig(level=logging.DEBUG)
+
 
 def get_netatmo_token() -> dict:
     env = Env()
@@ -33,6 +36,29 @@ def get_netatmo_token() -> dict:
         return {'access_token': access_token, 'device_id': payload['device_id'], 'created_at': datetime.now()}
     except requests.exceptions.HTTPError as error:
         print(error.response.status_code, error.response.text)
+
+
+def get_sound_level_cached(netatmo_access_data: dict) -> float:
+    """ Returns the sound level (and caches it for one minute not to
+    receive a 403) """
+    db = firestore.Client()
+    doc_ref = db.collection(u'schaltuhr').document(u'soundlevel')
+    soundlevel_doc = None
+
+    try:
+        doc = doc_ref.get()
+        if doc.exists and (doc.to_dict()['created_at'] - datetime.utcnow().replace(tzinfo=pytz.utc)).total_seconds() < 60:
+            return doc.to_dict()['soundlevel']
+    except google.cloud.exceptions.NotFound:
+        pass
+
+    if soundlevel_doc is None:
+        soundlevel_doc = {
+            'soundlevel': get_sound_level(netatmo_access_data),
+            'created_at': datetime.utcnow().replace(tzinfo=pytz.utc)
+        }
+        doc_ref.set(soundlevel_doc)
+    return soundlevel_doc['soundlevel']
 
 
 def get_sound_level(netatmo_access_data: dict) -> float:
@@ -65,7 +91,7 @@ def is_it_dark() -> bool:
         if result:
             brightness = float(result.group(1).replace(',', '.'))
             logging.debug("Brightness is %f", brightness)
-            return brightness > 3
+            return brightness < 3
     raise Exception("Could not retrieve brightness")
 
 
