@@ -1,0 +1,5 @@
+etc/*
+code/.pytest_cache
+.idea
+code/.env
+esp8266/.*/

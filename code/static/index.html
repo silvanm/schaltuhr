@@ -1,0 +1,110 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://d3js.org/d3.v4.js"></script>
+    <style type="text/css">
+        body {
+            background-color: black;
+            color: white;
+        }
+
+        .axis text, .axis path {
+            color: white;
+            stroke: white;
+        }
+    </style>
+</head>
+<body>
+<div id="graph"></div>
+
+<script>
+
+    // how many days in the past to retrieve the values for
+  const days=30;
+
+
+  // set the dimensions and margins of the graph
+  var margin = {top: 10, right: 30, bottom: 30, left: 60},
+    width = 1500 - margin.left - margin.right,
+    height = 1000 - margin.top - margin.bottom;
+
+  // append the svg object to the body of the page
+  var svg = d3.select('#graph')
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform',
+      'translate(' + margin.left + ',' + margin.top + ')');
+
+  //Read the data
+  d3.json('/history', function (data) {
+
+    var maxdate = new Date(),
+      mindate = new Date(maxdate - days*24*3600*1000);
+    // Add X axis
+    var x = d3.scaleTime()
+      .domain([mindate, maxdate])
+      .range([0, width]);
+    svg.append('g')
+      .attr('transform', 'translate(0,' + height + ')')
+      .attr('class', 'axis')
+      .call(d3.axisBottom(x));
+
+    // Add Y axis
+    var y = d3.scaleLinear()
+      .domain([24, 0])
+      .range([height, 0]);
+    svg.append('g')
+      .attr('class', 'axis')
+      .call(d3.axisLeft(y));
+
+    // Add dots
+    let dot = svg.append('g')
+      .selectAll('dot')
+      .data(data)
+      .enter()
+
+    dot.append('rect')
+      .attr('x', function (d) {
+        // Use only the day
+        let e = Date.parse(d[0].substr(0, 19));
+        return x(e) - Math.floor(width/days)/2;
+      })
+      .attr('y', function (d) {
+        let e = new Date(Date.parse(d[0]));
+        return y(e.getHours() + e.getMinutes() / 60);
+      })
+      .attr('width', Math.floor(width/days))
+      .attr('height', Math.ceil(height/24/60))
+      .style('fill', function(d) {
+        if (d[2]) {
+          return 'hsl(240, 100%,' + (d[1]/800*100) + '%)';
+        } else {
+          if (d[1] > 500) {
+            return 'yellow';
+          } else {
+            return 'hsl(240, 100%,' + (d[1]/800*100) + '%)';
+          }
+        }
+      });
+
+    dot.append('circle')
+      .attr('cx', function (d) {
+        // Use only the day
+        let e = Date.parse(d[0].substr(0, 19));
+        return x(e);
+      })
+      .attr('cy', function (d) {
+        let e=new Date(Date.parse(d[0]));
+        return y(e.getHours() + e.getMinutes() / 60);
+      })
+      .attr('r', function(d) {
+        return Math.max(0, (d[3]-30) * 20 / 80);
+      })
+      .style('fill', 'red');
+  });
+
+</script>
+</body>
+</html>
