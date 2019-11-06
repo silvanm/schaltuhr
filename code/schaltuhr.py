@@ -1,13 +1,12 @@
 import google
-from datetime import datetime, date, timedelta
-from typing import Union
+from datetime import datetime
 
 import pytz
 import requests, re
-from attr import dataclass
 from environs import Env
 import logging
 from google.cloud import firestore
+from suntime import Sun
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -47,7 +46,7 @@ def get_sound_level_cached(netatmo_access_data: dict) -> float:
 
     try:
         doc = doc_ref.get()
-        if doc.exists and (doc.to_dict()['created_at'] - datetime.utcnow().replace(tzinfo=pytz.utc)).total_seconds() < 60:
+        if doc.exists and (datetime.utcnow().replace(tzinfo=pytz.utc) - doc.to_dict()['created_at']).total_seconds() < 60:
             return doc.to_dict()['soundlevel']
     except google.cloud.exceptions.NotFound:
         pass
@@ -76,23 +75,18 @@ def get_sound_level(netatmo_access_data: dict) -> float:
         print(error.response.status_code, error.response.text)
 
 
-def get_weather_page_content() -> str:
-    """ Return source code of the page of the weather state """
-    r = requests.get('https://www.tecson-data.ch/zurich/mythenquai/index.php')
-    return str(r.content)
-
-
 def is_it_dark() -> bool:
     """ Returns True if it is dark """
-    logging.debug("Retrieve brightness")
-    r = get_weather_page_content()
-    if r:
-        result = re.search(r'>([0-9,]*)&nbsp;W/m', r)
-        if result:
-            brightness = float(result.group(1).replace(',', '.'))
-            logging.debug("Brightness is %f", brightness)
-            return brightness < 3
-    raise Exception("Could not retrieve brightness")
+    latitude = 47.3816942
+    longitude = 8.4821749
+
+    sun = Sun(latitude, longitude)
+
+    # Get today's sunrise and sunset in UTC
+    today_sr = sun.get_sunrise_time()
+    today_ss = sun.get_sunset_time()
+    d = datetime.now(tz=pytz.utc)
+    return d < today_sr or d > today_ss
 
 
 def contains_valid_template(date: datetime) -> bool:
