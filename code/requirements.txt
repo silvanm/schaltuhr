@@ -9,6 +9,7 @@ environs==6.0.0
 firebase-admin==3.1.0
 firestore==0.0.8
 Flask==1.1.1
+freezegun==0.3.14
 google-api-core==1.14.3
 google-api-python-client==1.7.11
 google-auth==1.6.3

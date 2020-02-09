@@ -46,7 +46,8 @@ def get_sound_level_cached(netatmo_access_data: dict) -> float:
 
     try:
         doc = doc_ref.get()
-        if doc.exists and (datetime.utcnow().replace(tzinfo=pytz.utc) - doc.to_dict()['created_at']).total_seconds() < 60:
+        if doc.exists and (
+                datetime.utcnow().replace(tzinfo=pytz.utc) - doc.to_dict()['created_at']).total_seconds() < 60:
             return doc.to_dict()['soundlevel']
     except google.cloud.exceptions.NotFound:
         pass
@@ -75,13 +76,18 @@ def get_sound_level(netatmo_access_data: dict) -> float:
         print(error.response.status_code, error.response.text)
 
 
-def is_it_dark() -> bool:
-    """ Returns True if it is dark """
+def get_sun() -> Sun:
+    """ Returns a configured sun class (with the local coordinates) """
     latitude = 47.3816942
     longitude = 8.4821749
 
     sun = Sun(latitude, longitude)
+    return sun
 
+
+def is_it_dark() -> bool:
+    """ Returns True if it is dark """
+    sun = get_sun()
     # Get today's sunrise and sunset in UTC
     today_sr = sun.get_sunrise_time()
     today_ss = sun.get_sunset_time()
