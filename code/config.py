@@ -1,10 +1,10 @@
 switches = {
-    'a': {  # in living room
+    'a': {  # in Orell's room
         'morning': True,
         'evening': True,
     },
-    'b': {  # in Orell's room
-        'morning': False,
+    'b': {  # in living room
+        'morning': True,
         'evening': True,
     }
 }
